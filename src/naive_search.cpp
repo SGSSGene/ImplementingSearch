@@ -8,8 +8,15 @@
 #include <seqan3/search/search.hpp>
 
 // prints out all occurences of query inside of ref
-void findOccurences(std::vector<seqan3::dna5> const& ref, std::vector<seqan3::dna5> const& query) {
+void findOccurences(std::span<seqan3::dna5 const> ref, std::span<seqan3::dna5 const> query, size_t refId, size_t queryId) {
     //!TODO ImplementMe
+    auto searchRange = ref;
+    for (auto r = std::ranges::search(searchRange, query); !r.empty(); r = std::ranges::search(searchRange, query)) {
+        auto pos = std::distance(ref.begin(), r.begin());
+        searchRange = {ref.begin()+pos+1, ref.end()};
+
+        std::cout << "found query " << queryId << " in sequence " << refId << " at position " << pos << "\n";
+    }
 }
 
 int main(int argc, char const* const* argv) {
@@ -60,9 +67,9 @@ int main(int argc, char const* const* argv) {
     queries.resize(number_of_queries); // will reduce the amount of searches
 
     //! search for all occurences of queries inside of reference
-    for (auto& r : reference) {
-        for (auto& q : queries) {
-            findOccurences(r, q);
+    for (size_t refId{0}; refId < reference.size(); ++refId) {
+        for (size_t qId{0}; qId < queries.size(); ++qId) {
+            findOccurences(reference[refId], queries[qId], refId, qId);
         }
     }
 

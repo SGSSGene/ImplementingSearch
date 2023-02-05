@@ -71,14 +71,35 @@ int main(int argc, char const* const* argv) {
     queries.resize(number_of_queries); // will reduce the amount of searches
 
     seqan3::configuration const cfg = seqan3::search_cfg::max_error_total{seqan3::search_cfg::error_count{0}};
+
+    // Function that verifies that the hamming distance at a certain position is lower than number_of_errors
+    auto verifyDistance = [&](size_t refId, size_t qId, size_t refPos) {
+        auto const& r = reference[refId];
+        auto const& q = queries[qId];
+        if (r.size() < refPos + q.size()) return false; // query is longer than the reference
+        size_t errorCount{};
+        for (size_t i{0}; i < q.size() and errorCount <= number_of_errors; ++i) {
+            if (q[i] != r[refPos+i]) errorCount += 1;
+        }
+        return errorCount <= number_of_errors;
+    };
+
     //!TODO !ImplementMe use the seqan3::search to find a partial error free hit, verify the rest inside the text
-    // Pseudo code (might be wrong):
-    // for query in queries:
-    //      parts[3] = cut_query(3, query);
-    //      for p in {0, 1, 2}:
-    //          for (pos in search(index, part[p]):
-    //              if (verify(ref, query, pos +- ....something)):
-    //                  std::cout << "found something\n"
+    for (size_t qId{0}; qId < queries.size(); ++qId) {
+        auto const& q = queries[qId];
+        size_t maxParts = number_of_errors + 1ul;
+        for (auto partId{0ul}; partId < maxParts; ++partId) {
+            auto startOffset = q.size() * partId / maxParts;
+            auto part = std::span{q.begin() + startOffset,
+                                  q.begin() + q.size() * (partId+1) / maxParts};
+            for (auto result : search(part, index, cfg)) {
+                if (result.reference_begin_position() < startOffset) continue;
+                if (verifyDistance(result.reference_id(), qId, result.reference_begin_position() - startOffset)) {
+                    std::cout << "found query " << qId << " in sequence " << result.reference_id() << " at position " << result.reference_begin_position() - startOffset << "\n";
+                }
+            }
+        }
+    }
 
     return 0;
 }

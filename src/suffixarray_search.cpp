@@ -1,5 +1,6 @@
 #include <divsufsort.h>
 #include <sstream>
+#include <span>
 
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/argument_parser/all.hpp>
@@ -66,11 +67,29 @@ int main(int argc, char const* const* argv) {
     //      https://github.com/y-256/libdivsufsort
     //      To make the `reference` compatible with libdivsufsort you can simply
     //      cast it by calling:
-    //      `sauchar_t const* str = reinterpret_cast<sauchar_t const*>(reference.data());`
+    sauchar_t const* str = reinterpret_cast<sauchar_t const*>(reference.data());
+    divsufsort(str, suffixarray.data(), suffixarray.size());
 
-    for (auto& q : queries) {
-        //!TODO !ImplementMe apply binary search and find q  in reference using binary search on `suffixarray`
-        // You can choose if you want to use binary search based on "naive approach", "mlr-trick", "lcp"
+
+    for (size_t qId{0}; qId < queries.size(); ++qId) {
+        // Only compares the first n-th elements
+        auto comparisonFunction = [&](std::span<seqan3::dna5 const> lhs, std::span<seqan3::dna5 const> rhs) {
+            for (size_t i{0}; i < std::min(lhs.size(), rhs.size()); ++i) {
+                if (lhs[i] > rhs[i]) return false;
+                if (lhs[i] < rhs[i]) return true;
+            }
+            return false;
+        };
+        // Transforms the suffixarray integer, into a string view
+        auto projectionFunction = [&](saidx_t pos) -> std::span<seqan3::dna5 const> {
+            return {reference.begin() + pos, reference.end()};
+        };
+
+        auto rangeOnSA = std::ranges::equal_range(suffixarray, std::span{queries[qId]}, comparisonFunction, projectionFunction);
+
+        for (auto pos : rangeOnSA) {
+            std::cout << "found query " << qId << " in sequence " << 0 << " at position " << pos << "\n";
+        }
     }
 
     return 0;

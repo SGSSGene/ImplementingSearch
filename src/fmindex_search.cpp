@@ -62,6 +62,9 @@ int main(int argc, char const* const* argv) {
 
     //!TODO !ImplementMe use the seqan3::search function to search
     seqan3::configuration const cfg = seqan3::search_cfg::max_error_total{seqan3::search_cfg::error_count{number_of_errors}};
+    for (auto result : search(queries, index, cfg)) {
+        std::cout << "found query " << result.query_id() << " in sequence " << result.reference_id() << " at position " << result.reference_begin_position() << "\n";
+    }
 
     return 0;
 }
